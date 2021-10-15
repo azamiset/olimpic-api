@@ -2,10 +2,14 @@ const User = require('./model')
 const bcrypt = require('bcryptjs');
 
 function signup(req, res) {
-  res.render('register');
+  if (req.cookies.jwt == undefined) {
+    return res.render('register');
+  }
+  res.redirect('/');
 }
 
 async function register(req, res) {
+
   try {
     const password = req.body.password;
     const cpassword = req.body.confirmpassword;
@@ -22,15 +26,13 @@ async function register(req, res) {
         confirmpassword: req.body.confirmpassword
       });
 
-      console.log('the succes part ' + register);
-
-      const token = await register.generateAuthToken();
-      console.log('the token part ' + token);
-
-      const user = await register.save();
-      console.log('the page part ' + user);
-
-      res.status(201).render('index');
+      await register.generateAuthToken();
+      // res.cookie('jwt', token, {
+      //   expires: new Date(Date.now() + 300000),
+      //   httpOnly: true
+      // });
+      await register.save();
+      return res.redirect('/login');
 
     } else {
       res.send('Password are not matching!');
@@ -38,12 +40,16 @@ async function register(req, res) {
 
   } catch (error) {
     res.status(400).send(error);
-    console.log('the error part page');
+
   }
 }
 
 function signin(req, res) {
-  res.render('login');
+  if (req.cookies.jwt == undefined) {
+    return res.render('login');
+  }
+
+  res.redirect('/');
 }
 
 async function login(req, res) {
@@ -52,15 +58,18 @@ async function login(req, res) {
     const password = req.body.password;
 
     const userLogin = await User.findOne({ email: email });
-    console.log('User Login: ', userLogin);
-
     const isMatch = bcrypt.compare(password, userLogin.password);
 
     const token = await userLogin.generateAuthToken();
-    console.log(`the token part ${token}`);
+
+    res.cookie('jwt', token, {
+      expires: new Date(Date.now() + 5000000),
+      httpOnly: true
+    });
 
     if (isMatch) {
-      res.status(201).render('index');
+      return res.redirect('/');
+
     } else {
       res.send('Invalid password details!');
     }
@@ -70,5 +79,23 @@ async function login(req, res) {
   }
 }
 
+async function logout(req, res) {
+  try {
+    console.log(req.user);
 
-module.exports = { signup, register, signin, login };
+    req.user.tokens = req.user.tokens.filter((object) =>{
+      return object.token !== req.token;
+    })
+
+    res.clearCookie("jwt");
+
+    await req.user.save();
+    res.render('login')
+
+  } catch (error) {
+    res.status(500).send(error);
+  }
+}
+
+
+module.exports = { signup, register, signin, login, logout };

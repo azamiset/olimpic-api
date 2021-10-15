@@ -1,9 +1,13 @@
-const home = (req, res) => {
-  res.render('index');
+function home(req, res) {
+  res.render("index");
 }
 
-const about = (req, res) => {
-  res.render('about');
+function about(req, res) {
+  res.render("about");
 }
 
-module.exports = { home, about };
+function contact(req, res) {
+  res.render("contact");
+}
+
+module.exports = { home, about, contact };
